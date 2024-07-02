@@ -15,8 +15,9 @@ class Controller:
     def computing(self, error):
         cur_time = round(time() * 1000)
         delta_time = cur_time - self.prev_time
-        self.integral += self.kI * error * delta_time
-        derivative = self.kD * (error - self.prev_error) / delta_time
+        if delta_time > 15:
+            self.integral += self.kI * error * delta_time
+            derivative = self.kD * (error - self.prev_error) / delta_time
 
-        self.prev_time, self.prev_error = cur_time, error
-        return self.kP * error + self.kI * self.integral + self.kD * derivative
+            self.prev_time, self.prev_error = cur_time, error
+            return self.kP * error + self.kI * self.integral + self.kD * derivative

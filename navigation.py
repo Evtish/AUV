@@ -4,7 +4,9 @@ import cv2
 
 
 class Navigation:
-    def __init__(self, image):
+    image = None
+
+    def set_image(self, image):
         self.image = image
 
     def get_image(self, window_name):

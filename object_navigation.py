@@ -2,10 +2,16 @@
 
 import cv2
 
+FRONT, BOTTOM = 0, 1
+
 
 class Navigation:
-    def __init__(self, image):
+    def __init__(self, image, camera_view):
         self.image = image
+        self.camera_view = camera_view
+
+    def get_camera_view(self):
+        return self.camera_view
 
     def get_image(self, window_name):
         cv2.imshow(window_name, self.image)

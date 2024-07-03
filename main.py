@@ -32,22 +32,13 @@ navigation_bottom = Navigation(auv.get_image_bottom())
 
 
 def find_target():
-    navigation_bottom.set_image(auv.get_image_bottom())
-    # navigation_front.get_image('Front')
-    # navigation_bottom.get_image('Bottom')
-    black_cnts = navigation_bottom.detect_color((0, 0, 0), (0, 0, 30))
-    if bool(navigation_bottom.get_center(black_cnts)):
+    if bool(cube_center):
         print('found')
         return True
     return False
 
 
 def stab_target():
-    navigation_bottom.set_image(auv.get_image_bottom())
-    # navigation_front.get_image('Front')
-    # navigation_bottom.get_image('Bottom')
-    black_cnts = navigation_bottom.detect_color((0, 0, 0), (0, 0, 30))
-    cube_center = navigation_bottom.get_center(black_cnts)
     if cube_center and stabilize(*cube_center, manager, BOTTOM):
         manager.stop_motors()
         print('stabbed')
@@ -61,13 +52,19 @@ manager.set_depth(1.4)
 manager.add_task(find_target)
 manager.add_task(stab_target)
 
+cur_task = manager.pop_task()
 while True:
     # update_data()
+    navigation_bottom.set_image(auv.get_image_bottom())
     navigation_bottom.get_image('Bottom')
-    cur_task = manager.pop_task()
-    while not cur_task():
+
+    black_cnts = navigation_bottom.detect_color((0, 0, 0), (0, 0, 30))
+    cube_center = navigation_bottom.get_center(black_cnts)
+
+    if cur_task():
+        cur_task = manager.pop_task()
+    else:
         manager.update_speed(BOTTOM)
-        # update_data()
-        navigation_bottom.get_image('Bottom')
+
     if manager.get_queue_length() == 0:
         break

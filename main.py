@@ -1,12 +1,12 @@
 import pymurapi as mur
 # import cv2
 from navigation import Navigation
-from moving import MovementManaging, stabilize
+from moving import MovementManager, stabilize, FRONT, BOTTOM
 # from time import sleep
 # import numpy as np
 
 auv = mur.mur_init()
-manager = MovementManaging()
+manager = MovementManager()
 navigation_front = Navigation()
 # navigation_bottom = Navigation()
 
@@ -32,23 +32,31 @@ navigation_front = Navigation()
 
 def find_target():
     navigation_front.set_image(auv.get_image_front())
+    # navigation_front.get_image('Front')
+    # navigation_bottom.get_image('Bottom')
     yellow_cnts = navigation_front.detect_color((20, 50, 50), (35, 255, 255))
-    return bool(navigation_front.get_center(yellow_cnts))
-
-
-def stab_target():
-    navigation_front.set_image(auv.get_image_front())
-    yellow_cnts = navigation_front.detect_color((20, 50, 50), (35, 255, 255))
-    fish_center = navigation_front.get_center(yellow_cnts)
-    if stabilize(*fish_center):
-        manager.stop_motors()
+    if bool(navigation_front.get_center(yellow_cnts)):
+        print('found')
         return True
     return False
 
 
-manager.set_yaw(0.0)
-manager.set_depth(2.0)
-manager.set_forward_speed(30)
+def stab_target():
+    navigation_front.set_image(auv.get_image_front())
+    # navigation_front.get_image('Front')
+    # navigation_bottom.get_image('Bottom')
+    yellow_cnts = navigation_front.detect_color((20, 50, 50), (35, 255, 255))
+    fish_center = navigation_front.get_center(yellow_cnts)
+    if fish_center and stabilize(*fish_center, manager, FRONT):
+        manager.stop_motors()
+        print('stabbed')
+        return True
+    return False
+
+
+manager.set_depth(1.4)
+# manager.set_yaw(0.0)
+# manager.set_forward_speed(20)
 manager.add_task(find_target)
 manager.add_task(stab_target)
 
@@ -57,7 +65,7 @@ while True:
 
     cur_task = manager.pop_task()
     while not cur_task():
-        manager.update_speed()
+        manager.update_speed(FRONT)
         # update_data()
 
     if manager.get_queue_length() == 0:

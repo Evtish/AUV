@@ -1,16 +1,16 @@
 import pymurapi as mur
 from PID_controller import Controller
-from navigation import Navigation
-from time import time
+# from navigation import Navigation
+from time import time, sleep
 
 auv = mur.mur_init()
-forward_pid = Controller(0.6, 0, 0.6)
 IMAGE_H, IMAGE_W = 240, 320
+FRONT, BOTTOM = 0, 1
 
 
-class MovementManaging:
+class MovementManager:
     yaw, depth = 0.0, 0.0
-    forward_speed, side_speed = 0.0, 0.0
+    height_speed, forward_speed, side_speed = 0.0, 0.0, 0.0
     delta_time = 0
     tasks_queue = []
 
@@ -19,6 +19,9 @@ class MovementManaging:
 
     def get_depth(self):
         return self.depth
+
+    def get_height_speed(self):
+        return self.height_speed
 
     def get_forward_speed(self):
         return self.forward_speed
@@ -31,6 +34,9 @@ class MovementManaging:
 
     def set_depth(self, val):
         self.depth = val
+
+    def set_height_speed(self, val):
+        self.height_speed = val
 
     def set_forward_speed(self, val):
         self.forward_speed = val
@@ -52,14 +58,21 @@ class MovementManaging:
             auv.set_motor_power(i, 0)
         self.forward_speed, self.side_speed = 0.0, 0.0
 
-    def update_speed(self):
+    def update_speed(self, camera_view):
         cur_time = int(round(time() * 1000))
         if cur_time - self.delta_time > 15:
             self.delta_time = cur_time
-            keep_yaw(self.yaw, self.forward_speed)
+            auv.set_motor_power(4, self.side_speed)
+            keep_yaw(self.forward_speed, self.yaw)
             keep_depth(self.depth)
-            auv.set_motor_power(2, self.side_speed)
-            auv.set_motor_power(3, self.side_speed)
+            '''if camera_view == FRONT:
+                # keep_yaw(self.yaw, self.forward_speed)
+                auv.set_motor_power(2, self.height_speed)
+                auv.set_motor_power(3, self.height_speed)
+            elif camera_view == BOTTOM:
+                keep_depth(self.depth)
+                auv.set_motor_power(0, self.forward_speed)
+                auv.set_motor_power(1, self.forward_speed)'''
 
 
 def limit(input_val, min_val, max_val):
@@ -79,11 +92,14 @@ def keep_yaw(speed, new_angle):
             return angle + 360
         return angle
 
-    error = auv.get_yaw() - convert_angle(new_angle)
-    output = forward_pid.computing(error)
+    try:
+        error = auv.get_yaw() - convert_angle(new_angle)
+        output = keep_yaw.pid.computing(error)
 
-    auv.set_motor_power(0, limit(speed - output, -100, 100))
-    auv.set_motor_power(1, limit(speed + output, -100, 100))
+        auv.set_motor_power(0, limit(speed - output, -100, 100))
+        auv.set_motor_power(1, limit(speed + output, -100, 100))
+    except AttributeError:
+        keep_yaw.pid = Controller(0.1, 0, 0.1)
 
 
 def keep_depth(new_depth):
@@ -97,7 +113,7 @@ def keep_depth(new_depth):
         keep_depth.pid = Controller(70, 0, 50)
 
 
-def stabilize(target_x, target_y):
+def stabilize(target_x, target_y, manager, camera_view):
     try:
         x_center, y_center = target_x - IMAGE_W / 2, target_y - IMAGE_H / 2
 
@@ -105,11 +121,17 @@ def stabilize(target_x, target_y):
         if length < 2.0:
             return True
 
-        forward_speed = limit(forward_pid.computing(y_center), -100, 100)
         side_speed = limit(stabilize.side_pid.computing(x_center), -100, 100)
+        manager.set_side_speed(side_speed)
+        forward_speed = limit(stabilize.forward_pid.computing(y_center), -100, 100)
+        manager.set_forward_speed(forward_speed)
+        '''if camera_view == FRONT:
+            height_speed = limit(pid.computing(y_center), -100, 100)
+            stabilize.manager.set_height_speed(height_speed)
+        elif camera_view == BOTTOM:
+            forward_speed = limit(pid.computing(y_center), -100, 100)
+            stabilize.manager.set_forward_speed(forward_speed)'''
 
-        stabilize.managing.set_forward_speed(forward_speed)
-        stabilize.managing.set_side_speed(side_speed)
         '''auv.set_motor_power(0, forward_speed)
         auv.set_motor_power(1, forward_speed)
         auv.set_motor_power(2, side_speed)
@@ -118,5 +140,6 @@ def stabilize(target_x, target_y):
         return False
 
     except AttributeError:
-        stabilize.managing = MovementManaging()
-        stabilize.side_pid = Controller(0.6, 0, 0.6)
+        # stabilize.manager = MovementManager()
+        stabilize.forward_pid = Controller(400, 0, 30)
+        stabilize.side_pid = Controller(0.1, 0, 0.1)

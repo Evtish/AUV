@@ -1,7 +1,7 @@
 import pymurapi as mur
 from PID_controller import Controller
 # from navigation import Navigation
-from time import time, sleep
+from time import time
 
 auv = mur.mur_init()
 IMAGE_H, IMAGE_W = 240, 320
@@ -99,7 +99,7 @@ def keep_yaw(speed, new_angle):
         auv.set_motor_power(0, limit(speed - output, -100, 100))
         auv.set_motor_power(1, limit(speed + output, -100, 100))
     except AttributeError:
-        keep_yaw.pid = Controller(0.1, 0, 0.1)
+        keep_yaw.pid = Controller(1, 0, 1)
 
 
 def keep_depth(new_depth):
@@ -141,5 +141,5 @@ def stabilize(target_x, target_y, manager, camera_view):
 
     except AttributeError:
         # stabilize.manager = MovementManager()
-        stabilize.forward_pid = Controller(400, 0, 30)
-        stabilize.side_pid = Controller(0.1, 0, 0.1)
+        stabilize.forward_pid = Controller(35, 0, 25)
+        stabilize.side_pid = Controller(0.5, 0, 0.3)
